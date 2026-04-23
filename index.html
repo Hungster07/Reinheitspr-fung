@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ionennachweis</title>
+  <style>
+    @page {
+      size: A5 portrait;
+      margin: 14mm 12mm 14mm 12mm;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      background: #dcdcdc;
+      color: #111;
+    }
+
+    .app {
+      max-width: 700px;
+      margin: 30px auto;
+      background: white;
+      padding: 24px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.15);
+      border-radius: 10px;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 24px;
+    }
+
+    .eingabe-zeile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    .eingabe-zeile label:first-child {
+      min-width: 100px;
+      font-weight: bold;
+    }
+
+    select {
+      font-size: 15px;
+      padding: 4px 8px;
+    }
+
+    .buttons {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      padding: 10px 14px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    /* Druckansicht */
+    .print-page {
+      display: none;
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .app {
+        display: none;
+      }
+
+      .print-page {
+        display: block;
+        width: 148mm;
+        min-height: 210mm;
+        box-sizing: border-box;
+        padding: 0;
+        margin: 0;
+        font-size: 10.8pt;
+        line-height: 1.13;
+      }
+
+      .reaktion {
+        margin-bottom: 10px;
+      }
+
+      .zweite-zeile {
+        display: block;
+      }
+
+      .ergebnis {
+        font-weight: bold;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Bildschirmansicht -->
+  <div class="app">
+    <h1>Ionennachweis</h1>
+    <p>Wähle für jede Reaktion positiv oder negativ aus. Beim Drucken wird automatisch eine PDF im Stil deines Beispiels erzeugt.</p>
+
+    <div id="formular"></div>
+
+    <div class="buttons">
+      <button onclick="druckAnsichtAktualisieren()">Vorschau aktualisieren</button>
+      <button onclick="alsPDFDrucken()">Als PDF drucken</button>
+    </div>
+  </div>
+
+  <!-- Druckansicht -->
+  <div class="print-page" id="printPage"></div>
+
+  <script>
+    const reaktionen = [
+      {
+        titel: "1) Kupfer:",
+        gleichung: "Cu<sup>+</sup> + SCN<sup>−</sup> → CuSCN ↓ → weißer Niederschlag",
+        hinweis: "→ NH<sub>4</sub>SCN wird zur Probelösung gegeben"
+      },
+      {
+        titel: "2) Eisen:",
+        gleichung: "4 Fe<sup>3+</sup> + 3 [Fe(CN)<sub>6</sub>]<sup>4−</sup> → Fe<sup>III</sup>[Fe<sup>II</sup>(CN)<sub>6</sub>]<sub>3</sub> ↓ → blauer Niederschlag",
+        hinweis: "→ Kaliumhexacyanoferrat wird zur leicht sauren Lösung gegeben"
+      },
+      {
+        titel: "3) Blei:",
+        gleichung: "Pb<sup>2+</sup> + 2 I<sup>−</sup> → PbI<sub>2</sub> ↓ → gelber Niederschlag",
+        hinweis: "→ Kaliumiodid wird zur Probelösung gegeben"
+      },
+      {
+        titel: "4) Sulfat:",
+        gleichung: "Ba<sup>2+</sup> + SO<sub>4</sub><sup>2−</sup> → BaSO<sub>4</sub> ↓ → weißer Niederschlag",
+        hinweis: "→ Bariumchlorid wird zur Probelösung gegeben"
+      },
+      {
+        titel: "5) Carbonat:",
+        gleichung: "CO<sub>3</sub><sup>2−</sup> + 2 H<sup>+</sup> → H<sub>2</sub>CO<sub>3</sub> → H<sub>2</sub>O + CO<sub>2</sub> ↑ → Sprudelbildung",
+        hinweis: "→ verdünnte Essigsäure wird zugegeben"
+      },
+      {
+        titel: "6) Acetat:",
+        gleichung: "CH<sub>3</sub>COO<sup>−</sup> + HSO<sub>4</sub><sup>−</sup> → CH<sub>3</sub>COOH + SO<sub>4</sub><sup>2−</sup> → Essiggeruch",
+        hinweis: "→ Probe wird mit Kaliumhydrogensulfat verrieben"
+      },
+      {
+        titel: "7) Nitrat:",
+        gleichung: "3 Fe<sup>2+</sup> + NO<sub>3</sub><sup>−</sup> + 4 H<sup>+</sup> → 3 Fe<sup>3+</sup> + NO + 2 H<sub>2</sub>O<br>[Fe(H<sub>2</sub>O)<sub>6</sub>]<sup>2+</sup> + NO → [Fe(H<sub>2</sub>O)<sub>5</sub>NO]<sup>2+</sup> + H<sub>2</sub>O",
+        hinweis: "→ Ringprobe (FeSO<sub>4</sub> + H<sub>2</sub>SO<sub>4</sub>) → rotbrauner Ring"
+      },
+      {
+        titel: "8) Chlorid:",
+        gleichung: "AgNO<sub>3</sub> + Cl<sup>−</sup> → AgCl ↓ + NO<sub>3</sub><sup>−</sup> → weißer Niederschlag",
+        hinweis: "→ löslich in verdünntem NH<sub>3</sub>"
+      },
+      {
+        titel: "9) Bromid:",
+        gleichung: "AgNO<sub>3</sub> + Br<sup>−</sup> → AgBr ↓ + NO<sub>3</sub><sup>−</sup> → hellgelber Niederschlag",
+        hinweis: "→ löslich in konzentriertem NH<sub>3</sub>"
+      },
+      {
+        titel: "10) Iodid:",
+        gleichung: "AgNO<sub>3</sub> + I<sup>−</sup> → AgI ↓ + NO<sub>3</sub><sup>−</sup> → gelber Niederschlag",
+        hinweis: "→ unlöslich in NH<sub>3</sub>"
+      }
+    ];
+
+    const formular = document.getElementById("formular");
+    const printPage = document.getElementById("printPage");
+
+    reaktionen.forEach((reaktion, index) => {
+      const zeile = document.createElement("div");
+      zeile.className = "eingabe-zeile";
+      zeile.innerHTML = `
+        <label for="reaktion${index}">Reaktion ${index + 1}</label>
+        <select id="reaktion${index}">
+          <option value="positiv">positiv</option>
+          <option value="negativ">negativ</option>
+        </select>
+      `;
+      formular.appendChild(zeile);
+    });
+
+    function druckAnsichtAktualisieren() {
+      printPage.innerHTML = "";
+
+      reaktionen.forEach((reaktion, index) => {
+        const wert = document.getElementById(`reaktion${index}`).value;
+
+        const block = document.createElement("div");
+        block.className = "reaktion";
+        block.innerHTML = `
+          <div>${reaktion.titel} ${reaktion.gleichung}</div>
+          <span class="zweite-zeile">${reaktion.hinweis} → <span class="ergebnis">${wert}</span></span>
+        `;
+        printPage.appendChild(block);
+      });
+    }
+
+    function alsPDFDrucken() {
+      druckAnsichtAktualisieren();
+      window.print();
+    }
+
+    druckAnsichtAktualisieren();
+  </script>
+
+</body>
+</html>
